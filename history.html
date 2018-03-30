@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>History 2.0</title>
+	<link rel="stylesheet" href="bootstrap.min.css">
+	<style type="text/css">
+		.continent {
+			border: solid 1px black;
+		}
+
+		.nation {
+			border: solid 1px gray;
+		}
+
+		.settlement {
+			border: solid 1px lightgrey;
+		}
+
+		footer {
+			height: 30px;
+		}
+	</style>
+	<style type="text/css">
+.cell-border {
+  fill: none;
+  stroke: #ccc;
+}
+
+.cell-center {
+  fill: none;
+  stroke: orange;
+}
+
+.label {
+  font: 11px sans-serif;
+}
+
+.label--top {
+  text-anchor: middle;
+}
+
+.label--right {
+  text-anchor: start;
+}
+
+.label--bottom {
+  text-anchor: middle;
+}
+
+.label--left {
+  text-anchor: end;
+}
+	</style>
+</head>
+<body>
+	<div class="world">
+		
+	</div>
+	<div class="container">
+		<div class="row" id="planet" >
+			
+		</div>
+	</div>
+	<h4>Drawn on canvas</h4>
+	<canvas style="background: none;"></canvas>
+	<br>
+	<h4>Drawn with D3.js</h4>
+	<div id="canvas"></div>
+	<span id="output"></span>
+	<footer></footer>
+	<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+	<script type="text/javascript" src="bootstrap.min.js"></script>
+	<script type="text/javascript" src="history.js"></script>
+	<script type="text/javascript" src="perlin.js"></script>
+	<script src="https://d3js.org/d3.v4.min.js"></script>
+	<script src="https://d3js.org/d3-polygon.v1.min.js"></script>
+<script>
+
+
+
+var canvas = d3.select("canvas").attr("width", 960).attr("height", 500).node(),
+    context = canvas.getContext("2d"),
+    width = canvas.width,
+    height = canvas.height;
+
+var worldMap = d3.select('#canvas').append("svg")
+	.attr("width", width)
+	.attr("height", height);
+
+
+var n = 800
+var threshold = 0.45;
+var noiseScale = 0.0054;
+var pts = randomPointsAndCutBorders(800, 9, 11);
+
+var sites = d3.range(n)
+    .map(function(d) { return [Math.random() * width, Math.random() * height]; });
+
+var voronoi = d3.voronoi()
+    .extent([[-1, -1], [width + 1, height + 1]]);
+
+$(document).ready(function() {
+	redraw();
+})
+
+function printSides(nois) {
+	var output = '';
+	for (var i = 0; i < nois.length - 1; i++) {
+		output += (Math.min(nois[i], nois[i+1])) + " ";
+	}
+	return output
+}
+
+for (var i = 0; i < 5; i++) {
+	var ma = 3;
+	var mi = 1;
+	var noi = [];
+	for (var j = 0; j < 20; j++) {
+		noi.push( Math.floor(Math.random() * (ma - mi + 1) + mi) )
+	}
+	console.log(printSides(noi))
+}
+
+// get random points and modify it so they aren't near the edges of canvas
+function randomPointsAndCutBorders(num, fracNumerator, fracDenominator) {
+	var temp = d3.range(num)
+		.map(function() { return [Math.random() * width, Math.random() * height]; })
+		.filter(function(d) { 
+			return width/fracDenominator <= d[0] 
+				&& d[0] <= fracNumerator*width/fracDenominator 
+				&& height/fracDenominator <= d[1] 
+				&& d[1] <= fracNumerator*height/fracDenominator; 
+		});
+	return temp;
+}
+
+// get random points
+function randomPoints(num) {
+	var temp = d3.range(num)
+		.map(function() { return [Math.random() * width, Math.random() * height]; });
+	return temp;
+}
+
+function moved() {
+  sites[0] = d3.mouse(this);
+  redraw();
+}
+
+function Center () {
+	// set of adjacent polygons
+	this.neighbors = []
+	// set of bordering edges
+	this.borders = []
+	// set of polygon corners
+	this.corners = []
+	// coordinates
+	this.coord = []
+	// type
+	this.type = 0
+}
+
+function Edge () {
+	// polygons connected by the Delaunay edge crossing this edge
+	this.d0 = null
+	this.d1 = null
+	// corners connected by this edge
+	this.v0 = null
+	this.v1 = null
+	// coordinates
+	this.x1 = 0
+	this.y1 = 0
+	this.x2 = 0
+	this.y2 = 0
+}
+
+function Corner () {
+	// set of polygons touching this corner
+	this.touches = []
+	// set of edges touching this corner
+	this.protrudes = []
+	// set of corners connected to this one
+	this.adjacent = []
+	// coordinates
+	this.x = 0
+	this.y = 0
+}
+
+function createNoise (x, y, z) {
+
+	var noise = perlin.noise(noiseScale);
+	var permutation = [
+        151,160,137,91,90,15,
+        131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
+        190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
+        88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
+        77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
+        102,143,54, 65,25,63,161, 1,216,80,73,209,76,132,187,208, 89,18,169,200,196,
+        135,130,116,188,159,86,164,100,109,198,173,186, 3,64,52,217,226,250,124,123,
+        5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
+        223,183,170,213,119,248,152, 2,44,154,163, 70,221,153,101,155,167, 43,172,9,
+        129,22,39,253, 19,98,108,110,79,113,224,232,178,185, 112,104,218,246,97,228,
+        251,34,242,193,238,210,144,12,191,179,162,241, 81,51,145,235,249,14,239,107,
+        49,192,214, 31,181,199,106,157,184, 84,204,176,115,121,50,45,127, 4,150,254,
+        138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+    ];
+
+    function scalenum(n) {
+        return (1 + n)/2;
+    }
+
+    function grad(hash, x, y, z) {
+        var h = hash & 15,       // convert lo 4 bits of hash code
+            u = h < 8 ? x : y,   // into 12 gradient directions
+            v = h < 4 ? y : h == 12 || h == 14 ? x : z;
+        return ((h&1) == 0 ? u : -u) + ((h&2) == 0 ? v : -v);
+    }
+
+    function fade(t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
+    }
+
+    // linear interpolation between a and b by amount t (0, 1)
+    function lerp(t, a, b) {
+        return a + t * (b - a);
+    }
+
+
+    // build the perm array
+    var p = new Array(512)
+    for (var i=0; i < 256 ; i++) {
+        p[256+i] = p[i] = permutation[i];
+    }
+
+	if(!z) z = 0;
+
+	x *= noiseScale;
+	y *= noiseScale;
+	z *= noiseScale;
+
+    // find unit cube that contains this point
+    var X = Math.floor(x) & 255,
+        Y = Math.floor(y) & 255,
+        Z = Math.floor(z) & 255;
+
+	// find relative x, y, z of point in cube
+	x -= Math.floor(x);
+	y -= Math.floor(y);
+	z -= Math.floor(z);
+
+    // compute the face curves for each of X, Y, Z
+    var u = fade(x),
+        v = fade(y),
+        w = fade(z);
+
+    // hash coordinates of the 8 cube corners
+    var A  = p[X  ]+Y,
+        AA = p[A  ]+Z,
+        AB = p[A+1]+Z,
+        B  = p[X+1]+Y,
+        BA = p[B  ]+Z,
+        BB = p[B+1]+Z;
+
+    var lo =
+        lerp(v,
+            lerp(u, grad(p[AA  ], x  , y  , z   ),
+                    grad(p[BA  ], x-1, y  , z   )),
+            lerp(u, grad(p[AB  ], x  , y-1, z   ),
+                    grad(p[BB  ], x-1, y-1, z   )));
+
+    var hi =
+        lerp(v,
+            lerp(u, grad(p[AA+1], x  , y  , z-1 ),
+                    grad(p[BA+1], x-1, y  , z-1 )),
+            lerp(u, grad(p[AB+1], x  , y-1, z-1 ),
+                    grad(p[BB+1], x-1, y-1, z-1 )));
+
+    // add blended results from 8 corners of cube
+    return scalenum(lerp(w, lo, hi));
+}
+
+// is Point inside list of Points
+function inside(point, vs) {
+    // ray-casting algorithm based on
+    // http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+
+    var x = point[0], y = point[1];
+
+    var inside = false;
+    for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        var xi = vs[i][0], yi = vs[i][1];
+        var xj = vs[j][0], yj = vs[j][1];
+
+        var intersect = ((yi > y) != (yj > y))
+            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+
+    return inside;
+};
+
+// shift input from low range into high range
+function rescale(lowR1, highR1, lowR2, highR2, inputR1) {
+	return (inputR1 - lowR1) * ((highR2 - lowR2) / (highR1 - lowR1)) + lowR2
+
+	// R2 is output
+	percent = (inputR1 - lowR1) / (highR1 - lowR1);
+	output = percent * (highR2 - lowR2) + lowR2;
+	return output;
+}
+
+function getCenterIndexByPoint(cArr, pt) {
+	for (var i = 0; i < cArr.length; i++) {
+		if (cArr[i].coord == pt) {
+			return i;
+		}
+	}
+}
+
+function redraw() {
+
+
+	var diagram = voronoi(sites),
+		links = diagram.links(),
+		polygons = diagram.polygons();
+
+	// data are the centroids of the polygons created by sites
+	var data = []
+	for (var i = polygons.length - 1; i >= 0; i--) {
+		data.push(d3.polygonCentroid(polygons[i]));
+	}
+
+	diagram = voronoi(data);
+	links = diagram.links();
+	polygons = diagram.polygons();
+
+
+	context.clearRect(0, 0, width, height);
+
+
+	var centers = [];
+	for (var i = 0; i < polygons.length; i++) {
+		var c = new Center();
+		c.coord = polygons[i].data;
+		// Set the corners of the polygon
+		for (var j = 0; j < polygons[i].length; j++) {
+			c.corners.push(polygons[i][j])
+		}
+		// links are { source: [x,y], target: [x,y]}
+		// Assign neighbors the (x,y) coordinates of each adjacent polygon's center
+		// Should I assign neighbors in a different for loop so neighbors can be type Center??
+		for (var k = 0; k < links.length; k++) {
+			if (links[k].source == c.coord) {
+				c.neighbors.push(links[k].target)
+			}
+			if (links[k].target == c.coord) {
+				c.neighbors.push(links[k].source)
+			}
+		}
+		centers.push(c)
+	}
+
+
+
+	var landPoints = [];
+	for (var i = 0; i < pts.length; i++) {
+		// get noise
+		var t = createNoise(pts[i][0], pts[i][1]);
+		// var t = rescale(0.3, 0.8, 0, 1, t)
+
+		// context.beginPath();
+		if (t >= threshold) {
+			landPoints.push(pts[i])
+			for (var j = 0; j < centers.length; j++) {
+				// if point is within a polygon, mark polygon
+				if (inside(pts[i], centers[j].corners)) {
+					centers[j].type = t
+					break;
+				}
+					
+			}
+			// // Draw noise points
+				// drawSite( pts[i] )
+				// // Polygon centers in red
+				// var rgba = "rgba(" + 255 + ",0,0," + t + ")";
+				// context.fillStyle = rgba;
+				// context.fill();
+				// context.strokeStyle = "#000";
+				// context.stroke();
+		}
+	}
+
+	// Convert water completely surrounded by land into land
+	for (var i = 0; i < centers.length; i++) {
+		// if this point is water
+		if (centers[i].type < threshold) {
+			var hasWaterNeighbor = false;
+			var avgNeighborType = 0;
+			for (var j = 0; j < centers[i].neighbors.length; j++) {
+				var index = getCenterIndexByPoint(centers, centers[i].neighbors[j])
+				if (centers[ index ].type < threshold) {
+					hasWaterNeighbor = true;
+				} else {
+					avgNeighborType += centers[ index ].type;
+				}
+			}
+			if (! hasWaterNeighbor) {
+				centers[i].type = avgNeighborType / centers[i].neighbors.length;
+			}
+		}
+	}
+
+	// Draw polygons
+	for (var i = 0; i < centers.length; i++) {
+		var r = rescale(threshold, 0.8, 0.5, 1, centers[i].type)
+		if (centers[i].type >= 0.7) {
+			context.beginPath();
+			drawCell(centers[i].corners);
+			// context.fillStyle = "rgba(139,69,19," + r + ")";
+			context.fillStyle = "rgba(163,107,67," + r + ")";
+			context.fill();
+		} else if (centers[i].type >= 0.6) {
+			context.beginPath();
+			drawCell(centers[i].corners);
+			// context.fillStyle = "rgba(193,144,109," + r + ")";
+			context.fillStyle = "rgba(163,107,67," + r + ")";
+			context.fill();
+		} else if (centers[i].type >= threshold) {
+			context.beginPath();
+			drawCell(centers[i].corners);
+			// context.fillStyle = "rgba(200,150,120," + r + ")";
+			context.fillStyle = "rgba(163,107,67," + r + ")";
+			context.fill();
+		} else {
+			context.beginPath();
+			drawCell(centers[i].corners);
+			context.fillStyle = "rgba(0,0,100,0.59)";
+			context.fill();
+		}
+	}
+
+
+
+	// // Print out nation and city information
+	// for (var i = 0; i < continents.length; i++) {
+	// 	for (var j = 0; j < continents[i].nations.length; j++) {
+	// 		for (var k = 0; k < continents[i].nations[j].settlements.length; k++) {
+	// 			var city = landPoints[ getRandom (0, landPoints.length) ]
+	// 			context.beginPath();
+	// 			drawSite(city)
+	// 			context.fillStyle = "rgba(0,0,0,1)";
+	// 			context.fill();
+	// 			context.strokeStyle = "#fff";
+	// 			context.
+	// 			context.stroke();
+	// 			// display nation race text
+	// 			// context.fillText(continents[i].nations[j].race, city[0], city[1])
+	// 			break;
+	// 		}
+	// 	}
+	// }
+
+	console.log(polygons)
+
+	worldMap.selectAll("polygon")
+	.data(centers)
+	.enter().append("polygon")
+		.attr("points", function(d) {
+			return d.corners.map(function(d) {
+				return d;
+			}).join(" ")
+		})
+		.attr("fill", function(d) {
+			var r = rescale(threshold, 0.8, 0.5, 1, d.type)
+			if (r >= threshold) {
+				return "rgba(163,107,67," + r + ")";
+			} else {
+				return "rgba(0,0,100,0.59)";
+			}
+		})
+		.attr("stroke","white")
+		.attr("stroke-width",0.05);
+
+	// // draw first in red
+		// context.beginPath();
+		// drawCell(centers[0].corners);
+		// context.fillStyle = "rgba(150,0,0,0.5)";
+		// context.fill();
+
+	// // Draw first point
+		// context.beginPath();
+		// drawSite(centers[0].coord);
+		// context.fillStyle = "rgba(0,0,0,1)";
+		// context.fill();
+
+	// // print polygon borders
+		// for (var j = 1; j < centers.length; j++) {
+		// 	context.beginPath();
+		// 	drawCell(centers[j].corners);
+		// 	context.strokeStyle = "black";
+		// 	context.stroke();
+		// 	context.fillStyle = "rgba(255,255,255,0.1)";
+		// 	context.fill();
+		// }
+
+	// // print neighbors
+		// for (var i = 0; i < centers[0].neighbors.length; i++) {
+		// 	context.beginPath();
+		// 	drawSite(centers[0].neighbors[i]);
+		// 	context.fillStyle = "rgba(0,0,0,1)";
+		// 	context.fill();
+		// }
+
+
+
+	// // Draw lines between adjacent polygon centers - Delaunay
+		// context.beginPath();
+		// for (var i = 0, n = links.length; i < n; ++i) {
+		// 	drawLink(links[i]);
+		// }
+		// context.strokeStyle = "rgba(0,0,0,1)";
+		// context.stroke();
+
+	// // Draw centers of polygons
+		// context.beginPath();
+		// for (var i = 0, n = data.length; i < n; i++) {
+		// 	drawSite(data[i]);
+		// }
+		// // Polygon centers in red
+		// context.fillStyle = "rgba(0,0,0,1)";
+		// context.fill();
+		// context.strokeStyle = "#fff";
+		// context.stroke();
+
+
+	// // Draw corners of polygons
+		// context.beginPath();
+		// for (var i = 0, n = centers.length; i < n; ++i) {
+		// 	for (var j = 0; j < centers[i].corners.length; j++) {
+		// 		drawSite(centers[i].corners[j])
+		// 	}
+		// }
+		// // Polygon corners in red
+		// context.fillStyle = "rgba(0,0,255,1)";
+		// context.fill();
+		// context.strokeStyle = "#fff";
+		// context.stroke();
+}
+
+
+
+function drawSite(site) {
+  context.moveTo(site[0] + 2.5, site[1]);
+  context.arc(site[0], site[1], 2.5, 0, 2 * Math.PI, false);
+}
+
+function drawLink(link) {
+  context.moveTo(link.source[0], link.source[1]);
+  context.lineTo(link.target[0], link.target[1]);
+}
+
+function drawCell(cell) {
+  if (!cell) return false;
+  context.moveTo(cell[0][0], cell[0][1]);
+  for (var j = 1, m = cell.length; j < m; ++j) {
+    context.lineTo(cell[j][0], cell[j][1]);
+  }
+  context.closePath();
+  return true;
+}
+
+</script>
+<!-- 	<script src="http://d3js.org/d3.v3.min.js"></script>
+	<script src="https://d3js.org/d3-polygon.v1.min.js"></script>
+	<script type="text/javascript">
+		var width = 960,
+    height = 500;
+
+var randomX = d3.random.normal(width / 2, 80),
+    randomY = d3.random.normal(height / 2, 80);
+
+var n = 300
+
+// random points near middle
+var data = d3.range(n)
+    .map(function() { return [randomX(), randomY()]; })
+    .filter(function(d) { return 0 <= d[0] && d[0] <= width && 0 <= d[1] && d[1] <= height; });
+
+// random points
+data = new Array(n);
+for (var i = 0; i < n; ++i) data[i] = new Array ( Math.random() * width, Math.random() * height );
+
+
+//////////////////////////////////////////                Change to Barrycentric Dual Mesh
+
+// generate voronoi to points
+var cells = d3.geom.voronoi()
+    .clipExtent([[-1, -1], [width + 1, height + 1]])
+    (data)
+    .map(d3.geom.polygon);
+
+// smooth the cells by finding the center of each polygon
+data = []
+for (var i = cells.length - 1; i >= 0; i--) {
+	data.push(d3.polygonCentroid(cells[i]));
+}
+cells = d3.geom.voronoi()
+    .clipExtent([[-1, -1], [width + 1, height + 1]])
+    (data)
+    .map(d3.geom.polygon);
+
+// data are points
+// cells are polygons
+
+var diagram = voronoi(data),
+	links = diagram.links(),
+	polygons = diagram.polygons()
+
+
+
+// add svg to canvas
+var svg = d3.select("#canvas").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+// display voronoi
+var cell = svg.append("g")
+    .attr("class", "cell")
+  .selectAll("g")
+    .data(cells)
+  .enter().append("g");
+
+// show line from center
+// cell.append("path")
+//     .attr("class", "cell-center")
+//     .attr("d", function(d) { return "M" + d.centroid() + "L" + d.point; });
+
+// show cell border
+cell.append("path")
+    .attr("class", "cell-border")
+    .attr("d", function(d) { return "M" + d.join("L") + "Z"; });
+
+// show cell center point
+svg.append("g")
+    .attr("class", "dot")
+  .selectAll("circle")
+    .data(data)
+  .enter().append("circle")
+    .attr("transform", function(d) { return "translate(" + d + ")"; })
+    .attr("r", 2.5);
+
+
+// show point label
+// svg.append("g")
+//     .attr("class", "label")
+//   .selectAll("text")
+//     .data(cells.filter(function(d) { return d.area() > 2000; }))
+//   .enter().append("text")
+//     .attr("class", function(d) {
+//       var centroid = d.centroid(),
+//           point = d.point,
+//           angle = Math.round(Math.atan2(centroid[1] - point[1], centroid[0] - point[0]) / Math.PI * 2);
+//       return "label--" + (d.orient = angle === 0 ? "right"
+//           : angle === -1 ? "top"
+//           : angle === 1 ? "bottom"
+//           : "left");
+//     })
+//     .attr("transform", function(d) { return "translate(" + d.point + ")"; })
+//     .attr("dy", function(d) { return d.orient === "left" || d.orient === "right" ? ".35em" : d.orient === "bottom" ? ".71em" : null; })
+//     .attr("x", function(d) { return d.orient === "right" ? 6 : d.orient === "left" ? -6 : null; })
+//     .attr("y", function(d) { return d.orient === "bottom" ? 6 : d.orient === "top" ? -6 : null; })
+//     .text(function(d, i) { return i; });
+	</script> -->
+</body>
+</html>
