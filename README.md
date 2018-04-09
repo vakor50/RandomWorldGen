@@ -1,7 +1,14 @@
-# To do:
+# Purpose
+Build a world map that includes details on nations and their history of interactions
+
+Randomly generate world using different noise functions and plotting methods
+
+Overlay a random weather to give tiles a climate that is visualized
+
+Create a history of nations including leaders, types of government, settlements, population, etc.
 
 
-
+# Ideas Dump
 ----
 ## World Map
 > Built using d3 and canvas manipulation.
