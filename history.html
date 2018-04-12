@@ -75,6 +75,7 @@
 	<script type="text/javascript" src="js/noise.js"></script>
 	<script src="https://d3js.org/d3.v4.min.js"></script>
 	<script src="https://d3js.org/d3-polygon.v1.min.js"></script>
+	<script type="text/javascript" src="js/island-logic.js"></script>
 <script>
 
 
@@ -121,7 +122,7 @@ for (var i = 0; i < 5; i++) {
 	for (var j = 0; j < 20; j++) {
 		noi.push( Math.floor(Math.random() * (ma - mi + 1) + mi) )
 	}
-	console.log(printSides(noi))
+	// console.log(printSides(noi))
 }
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -471,23 +472,23 @@ function redraw() {
 
 
 
-	// Print out nation and city information
-	for (var i = 0; i < continents.length; i++) {
-		for (var j = 0; j < continents[i].nations.length; j++) {
-			for (var k = 0; k < continents[i].nations[j].settlements.length; k++) {
-				var city = landPoints[ getRandom (0, landPoints.length) ]
-				context.beginPath();
-				drawSite(city)
-				context.fillStyle = "rgba(0,0,0,1)";
-				context.fill();
-				context.strokeStyle = "#fff";
-				context.stroke();
-				// // display nation race text
-				context.fillText(continents[i].nations[j].race, city[0], city[1])
-				break;
-			}
-		}
-	}
+	// // Print out nation and city information
+	// for (var i = 0; i < continents.length; i++) {
+	// 	for (var j = 0; j < continents[i].nations.length; j++) {
+	// 		for (var k = 0; k < continents[i].nations[j].settlements.length; k++) {
+	// 			var city = landPoints[ getRandom (0, landPoints.length) ]
+	// 			context.beginPath();
+	// 			drawSite(city)
+	// 			context.fillStyle = "rgba(0,0,0,1)";
+	// 			context.fill();
+	// 			context.strokeStyle = "#fff";
+	// 			context.stroke();
+	// 			// // display nation race text
+	// 			context.fillText(continents[i].nations[j].race, city[0], city[1])
+	// 			break;
+	// 		}
+	// 	}
+	// }
 
 
 
