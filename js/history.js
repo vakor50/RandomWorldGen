@@ -131,13 +131,13 @@ $(document).ready(function () {
 	for (var i = continents.length - 1; i >= 0; i--) {
 		// console.log(continents[i].name);
 		// console.log("----------------------------------------------------");
-		$('#planet').append('<div class="col-sm-4"><button data-toggle="collapse" href="#cont' + i + '" role="button" aria-expanded="false" aria-controls="cont' + i + '">' + continents[i].name + '</button><div class="continent collapse" id="cont' + i + '"></div></div>')
+		$('#planet').append('<div class="col-sm-4"><h4 data-toggle="collapse" href="#cont' + i + '" role="button" aria-expanded="false" aria-controls="cont' + i + '">' + continents[i].name + '</h4><div class="continent collapse" id="cont' + i + '"></div></div>')
 		
 		for (var j = 0; j < continents[i].nations.length; j++) {
 			var nation = continents[i].nations[j]
 			// console.log("    " + nation.name + " (" + nation.race + "), founded: " + nation.founded);
 			// console.log("    ------------------------------------------------");
-			$('#cont' + i).append('<button data-toggle="collapse" href="#divnat' + j + 'con' + i + '" role="button" aria-expanded="false" aria-controls="divnat' + j + 'con' + i + '">' + nation.name + ' (' + nation.race + ')</button>'
+			$('#cont' + i).append('<h6 data-toggle="collapse" href="#divnat' + j + 'con' + i + '" role="button" aria-expanded="false" aria-controls="divnat' + j + 'con' + i + '">' + nation.name + ' (' + nation.race + ')</h6>'
 				+ '<div class="nation collapse" id="divnat' + j + 'con' + i + '">' 
 				+ 'Government: <a href="https://en.wikipedia.org/wiki/' + nation.government.replace(' ', '_') + '">' + nation.government + '</a><br>' 
 				+ 'Founded: ' + nation.founded + '<br>' 
