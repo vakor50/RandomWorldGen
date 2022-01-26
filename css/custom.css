@@ -1,0 +1,44 @@
+        .continent {
+            border: solid 1px black;
+        }
+
+        .nation {
+            border: solid 1px gray;
+        }
+
+        .settlement {
+            border: solid 1px lightgrey;
+        }
+
+        footer {
+            height: 30px;
+        }
+        .cell-border {
+            fill: none;
+            stroke: #ccc;
+        }
+
+        .cell-center {
+            fill: none;
+            stroke: orange;
+        }
+
+        .label {
+            font: 11px sans-serif;
+        }
+
+        .label--top {
+            text-anchor: middle;
+        }
+
+        .label--right {
+            text-anchor: start;
+        }
+
+        .label--bottom {
+            text-anchor: middle;
+        }
+
+        .label--left {
+            text-anchor: end;
+        }
